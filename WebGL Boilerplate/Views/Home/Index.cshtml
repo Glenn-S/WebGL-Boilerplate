@@ -1,0 +1,33 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <div>
+        <br />
+        <canvas id="webgl-canvas" width="800" height="600">
+            Your browser does not support HTML5
+        </canvas>
+        <br />
+    </div>
+    <script>main();</script>
+</div>
+
+@section JavaScript {
+    <script type="text/javascript" src="~/js/webgl/main.js"></script>
+    <script type="text/javascript" src="~/js/webgl/RenderingEngine/RenderingEngine.js"></script>
+    <script type="text/javascript" src="~/js/webgl/RenderingEngine/RenderingEngine1.js"></script>
+    <script type="text/javascript" src="~/js/webgl/ShaderTools/ShaderTools.js"></script>
+
+    <!-- Shaders -->
+    <script type="text/javascript" src="~/js/webgl/shaders/VertexShader.js"></script>
+    <script type="text/javascript" src="~/js/webgl/shaders/FragmentShader.js"></script>
+    <script type="text/javascript" src="~/js/webgl/shaders/TextureVertexShader.js"></script>
+    <script type="text/javascript" src="~/js/webgl/shaders/TextureFragmentShader.js"></script>
+
+    <!-- Objects -->
+    <script type="text/javascript" src="~/js/webgl/3D/Cube.js"></script>
+
+    <!-- External libraries -->
+    <script type="text/javascript" src="~/js/glMatrix/gl-matrix.js"></script>
+}
