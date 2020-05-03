@@ -97,7 +97,7 @@ function Cube() {
 
         // test
         this.resetTransformation();
-        //this.setScale([1.0, 1.0, 1.0]);
+        this.setScale([1.0, 1.0, 1.0]);
         this.setTranslation([0.0, 0.0, -6.0]);
         this.setRotation(rotation, [0, 0, 1]);
         this.setRotation(rotation * 0.7, [0, 1, 0]);
@@ -220,10 +220,9 @@ function Cube() {
     }
 
     this.setScale = function (scale) {
-        glMatrix.mat4.scale()
         glMatrix.mat4.scale(
             this.modelMatrix,               // destination matrix
-            this.modelMatrix,
+            this.modelMatrix,               // destination matrix
             scale                           // scale
         );
     }
