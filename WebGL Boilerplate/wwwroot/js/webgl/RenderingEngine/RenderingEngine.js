@@ -1,17 +1,25 @@
 ﻿
-/**
- * Class RenderingEngine
- */
 function RenderingEngine() {
-
-    // member variables
+    // MEMBER VARIABLES
     this.gl;
-    var rotation = 0.0;
+    this.shaderTools;
 
     /**
-     * Init method for setting up the webGL context
-     */
-    this.glContext = function () {
+     * Initialize the gl context and shader tools
+     * */
+    this.init = function () {
+        gl = this.getContext();
+        this.gl = gl;
+
+        gl.depthFunc(gl.LEQUAL);
+
+        this.shaderTools = new ShaderTools(gl);
+    }
+
+    /**
+     * Get the WebGL context
+     * */
+    this.getContext = function () {
         var canvas = document.getElementById('webgl-canvas');
         var gl = canvas.getContext('webgl');
 
@@ -26,16 +34,54 @@ function RenderingEngine() {
         return gl;
     }
 
-    this.drawScene = function (gl, programInfo, buffers, texture, normalMap, deltaTime) {
-        gl.clearColor(0.75, 0.85, 0.8, 1.0); // background to set
-        gl.clearDepth(1.0); // clear everything
-        gl.enable(gl.DEPTH_TEST); // enable depth testing
-        gl.depthFunc(gl.LEQUAL); // near things obscure far things
+    /**
+     * Start the render loop
+     * @param {any} sceneGraph
+     */
+    this.start = function (sceneGraph) {
 
-        // clear the canvas
+        let camera = null; // TODO move out and make
+
+        // assign buffers
+        sceneGraph.forEach(obj => {
+            obj.init(this.gl, this.shaderTools); // initialize all buffers for each object
+        });
+
+        // render loop
+        var prev = 0;
+        let renderFunc = this.renderScene;
+
+        render = function (now) {
+            now *= 0.001; // convert to seconds
+            const delta = now - prev;
+            prev = now;
+
+            // update scene
+            renderFunc(sceneGraph, camera, delta);
+
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Render the scene objects in the scene graph
+     * @param {any} sceneObjects
+     * @param {any} camera
+     * @param {any} delta
+     */
+    this.renderScene = function (sceneGraph, camera, delta) {
+        let gl = this.gl;
+
+        gl.clearColor(0.2, 0.2, 0.2, 1.0);
+        gl.clearDepth(1.0);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        // create perspective matrix
+        // setup the perspective matrix
         const fov = 45 * Math.PI / 180; // in radians
         const aspectRatio = gl.canvas.clientWidth / gl.canvas.clientHeight;
         const zNear = 0.1;
@@ -50,160 +96,28 @@ function RenderingEngine() {
             zFar,
         );
 
-        // create model view matrix
-        const modelViewMatrix = glMatrix.mat4.create();
+        // go through each scene object
+        sceneGraph.forEach(object => {
+            let shaderTools = new ShaderTools(gl);
+            const shaderProgram = shaderTools.initShaderProgram(object.vsSource, object.fsSource);
+            
+            // bind the program
+            gl.useProgram(shaderProgram);
 
-        // *** Order of transforms matters
-        glMatrix.mat4.translate(
-            modelViewMatrix,        // destination matrix
-            modelViewMatrix,        // matrix to translate
-            [-0.0, 0.0, -6.0]       // amount to translate
-        );
-
-        glMatrix.mat4.rotate(
-            modelViewMatrix,        // destination matrix
-            modelViewMatrix,        // matrix to rotate
-            rotation,               // amount to rotate in radians
-            [0, 0, 1]               // axis to rotate about
-        );
-
-        // second rotation around y axis
-        glMatrix.mat4.rotate(
-            modelViewMatrix,        // destination matrix
-            modelViewMatrix,        // matrix to rotate
-            rotation * 0.7,               // amount to rotate in radians
-            [0, 1, 0]               // axis to rotate about
-        );
-
-        // update the animation
-        rotation += deltaTime; 
-
-        // create normal matrix
-        const normalMatrix = glMatrix.mat4.create();
-        glMatrix.mat4.invert(normalMatrix, modelViewMatrix);
-        glMatrix.mat4.transpose(normalMatrix, normalMatrix);
-
-        // setup position VBO
-        {
-            const numComponents = 3;
-            const type = gl.FLOAT;
-            const normalize = gl.FALSE;
-            const stride = 0;
-            const offset = 0;
-
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.position);
-            gl.vertexAttribPointer(
-                programInfo.attribLocations.vertexPosition,
-                numComponents,
-                type,
-                normalize,
-                stride,
-                offset
+            gl.uniformMatrix4fv(
+                gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+                false,
+                projectionMatrix
             );
-            gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
-        }
-        {
-            const numComponents = 3;
-            const type = gl.FLOAT;
-            const normalize = gl.FALSE;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normal);
-            gl.vertexAttribPointer(
-                programInfo.attribLocations.vertexNormal,
-                numComponents,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(programInfo.attribLocations.vertexNormal);
-        }
-        //// setup color VBO
-        //{
-        //    const numComponents = 4;
-        //    const type = gl.FLOAT;
-        //    const normalize = gl.FALSE;
-        //    const stride = 0;
-        //    const offset = 0;
 
-        //    gl.bindBuffer(gl.ARRAY_BUFFER, buffers.color);
-        //    gl.vertexAttribPointer(
-        //        programInfo.attribLocations.vertexColor,
-        //        numComponents,
-        //        type,
-        //        normalize,
-        //        stride,
-        //        offset
-        //    );
-        //    gl.enableVertexAttribArray(programInfo.attribLocations.vertexColor);
-        //}
-        // setup uv VBO
-        {
-            const numComponents = 2;
-            const type = gl.FLOAT;
-            const normalize = gl.FALSE;
-            const stride = 0;
-            const offset = 0;
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.uvs);
-            gl.vertexAttribPointer(
-                programInfo.attribLocations.uvCoord,
-                numComponents,
-                type,
-                normalize,
-                stride,
-                offset
-            );
-            gl.enableVertexAttribArray(programInfo.attribLocations.uvCoord);
-        }
-
-        // set up indices VBO
-        {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-        }
-
-        // bind the program
-        gl.useProgram(programInfo.program);
-
-        // set the shader uniforms
-        gl.uniformMatrix4fv(
-            programInfo.uniformLocations.projectionMatrix,
-            false,
-            projectionMatrix
-        );
-
-        gl.uniformMatrix4fv(
-            programInfo.uniformLocations.modelViewMatrix,
-            false,
-            modelViewMatrix
-        );
-        gl.uniformMatrix4fv(
-            programInfo.uniformLocations.normalMatrix,
-            false,
-            normalMatrix
-        );
-
-        // setup the texture
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
-
-        // setup normal map
-        gl.activeTexture(gl.TEXTURE1);
-        gl.bindTexture(gl.TEXTURE_2D, normalMap);
-        gl.uniform1i(programInfo.uniformLocations.uNormalMap, 0);
-
-        {
-            const vertexCount = 36;
-            const type = gl.UNSIGNED_SHORT;
-            const offset = 0;
-            gl.drawElements(gl.TRIANGLES, vertexCount, type, offset);
-        }
-
-        //{
-        //    const vertexCount = 4;
-        //    const offset = 0;
-        //    gl.drawArrays(gl.TRIANGLE_STRIP, offset, vertexCount);
-        //}
+            object.render(gl, shaderProgram, delta);
+        });
     }
+
+    //this.assignBuffers = function (geometry) {
+    //    let gl = this.gl;
+
+    //    // set VAO
+    //    var vao = gl.createVertexArray();
+    //}
 }

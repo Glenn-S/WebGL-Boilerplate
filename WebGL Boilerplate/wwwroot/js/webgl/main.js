@@ -7,7 +7,7 @@ function main() {
 
     console.debug("Starting RenderingEngine");
 
-    var renderEngine = new RenderingEngine1();
+    var renderEngine = new RenderingEngine();
     renderEngine.init();
 
     var sceneGraph = [];
